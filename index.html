@@ -1,851 +1,445 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="referrer" content="no-referrer">
-<title>HOLDOUT — password time-to-break</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Downstream — video to MP4</title>
+<!-- Open standalone (no browser chrome) when added to the iOS/Android home screen -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+<meta name="apple-mobile-web-app-title" content="Downstream" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
-  :root{
-    --ink:#0A0E14;
-    --ink-2:#0C121A;
-    --panel:#111A24;
-    --panel-2:#16212E;
-    --line:#22303F;
-    --line-soft:#1A2733;
-    --text:#E6EDF3;
-    --muted:#7E8EA3;
-    --muted-2:#54637A;
-    --accent:#46C8D6;
-    --crit:#FF4D5E;
-    --weak:#FF8A4C;
-    --fair:#F5C84B;
-    --strong:#46D98B;
-    --elite:#33D2BE;
-    --font-mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
-    --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  :root {
+    --ink:#0F1116; --surface:#171A21; --surface2:#1E222C; --line:#2A2F3B;
+    --text:#EDEFF3; --muted:#7C8598; --accent:#FFB020; --accent-d:#C77F00;
+    --danger:#F26D6D; --ok:#64D6A4; --r:14px;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --disp:"Space Grotesk",system-ui,-apple-system,sans-serif;
   }
-
-  *{box-sizing:border-box;}
-  html,body{height:100%;}
-  body{
-    margin:0;
-    font-family:var(--font-sans);
-    color:var(--text);
-    background:
-      radial-gradient(1200px 600px at 50% -10%, #101C28 0%, transparent 60%),
-      var(--ink);
-    min-height:100dvh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:clamp(16px,4vw,48px);
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; color:var(--text); font-family:var(--disp);
     -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(900px 500px at 78% -8%, rgba(255,176,32,.10), transparent 60%),
+      radial-gradient(700px 500px at 10% 108%, rgba(255,176,32,.05), transparent 55%),
+      var(--ink);
+    display:flex; justify-content:center; padding:clamp(20px,5vw,64px) 20px;
+  }
+  .app { width:100%; max-width:560px; }
+  header { margin-bottom:22px; }
+  .eyebrow {
+    font-family:var(--mono); font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--accent); display:inline-flex; align-items:center; gap:8px; margin-bottom:12px;
+  }
+  .eyebrow::before {
+    content:""; width:7px; height:7px; border-radius:50%; background:var(--accent);
+    animation:pulse 2.4s ease-out infinite;
+  }
+  @keyframes pulse {
+    0%{box-shadow:0 0 0 0 rgba(255,176,32,.5)} 70%{box-shadow:0 0 0 7px rgba(255,176,32,0)}
+    100%{box-shadow:0 0 0 0 rgba(255,176,32,0)}
+  }
+  h1 { font-size:clamp(34px,8vw,46px); font-weight:700; letter-spacing:-.03em; margin:0 0 6px; line-height:1; }
+  .sub { color:var(--muted); font-size:15px; margin:0; }
+
+  .card {
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+    padding:20px; box-shadow:0 24px 60px -30px rgba(0,0,0,.8); margin-bottom:14px;
+  }
+  .card + .card { margin-top:0; }
+
+  label.lbl {
+    display:block; font-family:var(--mono); font-size:11px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:9px;
+  }
+  .row { display:flex; gap:10px; }
+  @media (max-width:460px){ .row.stack { flex-direction:column; } }
+
+  input, select {
+    background:var(--ink); border:1px solid var(--line); border-radius:10px; color:var(--text);
+    font-family:var(--mono); font-size:14px; padding:13px 14px; outline:none;
+    transition:border-color .15s, box-shadow .15s; width:100%;
+  }
+  input::placeholder { color:#5b6472; }
+  input:focus, select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,176,32,.15); }
+  select { appearance:none; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237C8598' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 14px center; padding-right:36px;
   }
 
-  .stage{width:100%;max-width:560px;}
+  button {
+    font-family:var(--disp); font-weight:600; font-size:15px; border:none; border-radius:10px;
+    padding:13px 20px; cursor:pointer; transition:transform .08s, background .15s, opacity .15s; white-space:nowrap;
+  }
+  button:active { transform:translateY(1px); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .btn-primary { background:var(--accent); color:#1a1300; }
+  .btn-primary:hover:not(:disabled) { background:#ffc04d; }
+  .btn-block { width:100%; margin-top:16px; }
+  .btn-mini { background:var(--surface2); color:var(--text); border:1px solid var(--line); font-size:13px; padding:13px 16px; }
+  .btn-mini:hover { border-color:var(--muted); }
 
-  /* ---- brand header ---- */
-  .brand{display:flex;align-items:baseline;gap:12px;margin:0 0 18px 2px;}
-  .brand__mark{
-    font-family:var(--font-mono);
-    font-weight:700;
-    font-size:clamp(1.15rem,4.5vw,1.5rem);
-    letter-spacing:.42em;
-    padding-left:.42em;
-    color:var(--text);
-  }
-  .brand__sub{
-    font-size:.72rem;
-    letter-spacing:.18em;
-    text-transform:uppercase;
-    color:var(--muted-2);
-  }
+  .endpoint-state { font-family:var(--mono); font-size:12px; margin-top:10px; display:flex; align-items:center; gap:7px; }
+  .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .dot.on { background:var(--ok); } .dot.off { background:var(--danger); }
+  .endpoint-state .muted { color:var(--muted); }
 
-  /* ---- card ---- */
-  .card{
-    position:relative;
-    background:linear-gradient(180deg,var(--panel) 0%,var(--ink-2) 100%);
-    border:1px solid var(--line);
-    border-radius:16px;
-    padding:clamp(22px,5vw,34px);
-    overflow:hidden;
-    box-shadow:0 24px 60px -30px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.03);
+  .help-toggle {
+    background:none; border:none; color:var(--accent); font-family:var(--mono); font-size:12px;
+    padding:0; margin-top:12px; cursor:pointer; text-decoration:underline; text-underline-offset:3px;
   }
-  .card::before{ /* faint instrument grid, top only */
-    content:"";position:absolute;inset:0 0 auto 0;height:120px;pointer-events:none;
-    background-image:linear-gradient(var(--line-soft) 1px,transparent 1px),
-                     linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
-    background-size:22px 22px;
-    mask-image:linear-gradient(180deg,rgba(0,0,0,.35),transparent);
-    -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.35),transparent);
-    opacity:.5;
+  .help {
+    margin-top:14px; padding:14px; background:var(--surface2); border:1px solid var(--line);
+    border-left:3px solid var(--accent); border-radius:8px; font-size:13px; line-height:1.55; color:var(--muted);
   }
-  .card > *{position:relative;}
+  .help b { color:var(--text); font-weight:600; }
+  .help a { color:var(--accent); }
+  .help ol { margin:8px 0 0; padding-left:20px; }
+  .help li { margin-bottom:7px; }
+  .help code { font-family:var(--mono); font-size:12px; background:var(--ink); padding:2px 6px; border-radius:5px; color:var(--accent); }
 
-  .eyebrow{
-    font-family:var(--font-mono);
-    font-size:.68rem;letter-spacing:.26em;text-transform:uppercase;
-    color:var(--muted-2);margin:0 0 20px;
-  }
-  .eyebrow b{color:var(--accent);font-weight:600;}
+  .quality-row { display:flex; gap:10px; margin-top:14px; }
+  .quality-row > div { flex:1; }
 
-  /* ---- screens ---- */
-  .screen{display:none;}
-  .screen.is-active{display:block;animation:rise .35s ease both;}
-  @keyframes rise{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  .hidden { display:none !important; }
 
-  /* ---- field ---- */
-  .field-label{
-    display:block;font-size:.8rem;letter-spacing:.02em;color:var(--muted);
-    margin:0 0 8px;
-  }
-  .field{
-    display:flex;align-items:center;gap:8px;
-    background:var(--ink);
-    border:1px solid var(--line);
-    border-radius:11px;
-    padding:2px 6px 2px 14px;
-    transition:border-color .15s,box-shadow .15s;
-  }
-  .field:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(70,200,214,.16);}
-  .field input{
-    flex:1;min-width:0;
-    background:transparent;border:0;outline:0;color:var(--text);
-    font-family:var(--font-mono);font-size:1.05rem;letter-spacing:.02em;
-    padding:14px 4px;
-  }
-  .field input::placeholder{color:var(--muted-2);letter-spacing:0;}
-  .reveal{
-    flex:none;display:grid;place-items:center;
-    width:38px;height:38px;border-radius:8px;
-    background:transparent;border:0;color:var(--muted);cursor:pointer;
-    transition:color .15s,background .15s;
-  }
-  .reveal:hover{color:var(--text);background:var(--panel-2);}
-  .reveal svg{width:20px;height:20px;display:block;}
+  .result { margin-top:18px; animation:rise .3s ease both; }
+  .spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,176,32,.25); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; vertical-align:-3px; margin-right:8px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .working { font-family:var(--mono); font-size:13px; color:var(--muted); }
 
-  .charset{
-    display:flex;flex-wrap:wrap;gap:6px;align-items:center;
-    margin:12px 2px 0;min-height:22px;
-    font-family:var(--font-mono);font-size:.72rem;color:var(--muted-2);
+  .ready {
+    text-align:center; padding:18px; background:rgba(100,214,164,.08);
+    border:1px solid rgba(100,214,164,.35); border-radius:10px;
   }
-  .chip{
-    padding:3px 8px;border-radius:6px;border:1px solid var(--line-soft);
-    color:var(--muted);background:var(--ink-2);
-  }
-  .chip.on{color:var(--text);border-color:var(--line);}
-  .charset .len{margin-left:auto;color:var(--muted);}
+  .ready-file { font-family:var(--mono); font-size:13px; color:var(--text); word-break:break-all; margin-bottom:6px; }
+  .ready-note { font-family:var(--mono); font-size:12px; color:var(--muted); margin-bottom:14px; }
+  .ready-note code { color:var(--accent); }
+  .ready a { text-decoration:none; }
+  .savebtns { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
 
-  /* ---- select ---- */
-  .attacker{margin-top:22px;}
-  .select-wrap{position:relative;}
-  .select-wrap::after{
-    content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;
-    border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
-    transform:translateY(-70%) rotate(45deg);pointer-events:none;
-  }
-  select{
-    width:100%;appearance:none;-webkit-appearance:none;
-    background:var(--ink);border:1px solid var(--line);border-radius:11px;
-    color:var(--text);font-family:var(--font-mono);font-size:.92rem;
-    padding:14px 40px 14px 14px;cursor:pointer;outline:0;
-    transition:border-color .15s,box-shadow .15s;
-  }
-  select:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px rgba(70,200,214,.16);}
+  .saving { padding:16px; background:var(--surface2); border:1px solid var(--line); border-radius:10px; }
+  .saving-top { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px; }
+  .saving-file { font-family:var(--mono); font-size:12px; color:var(--text); word-break:break-all; padding-right:10px; }
+  .saving-pct { font-family:var(--mono); font-weight:600; font-size:14px; color:var(--accent); font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .bar { height:7px; background:var(--ink); border-radius:999px; overflow:hidden; }
+  .bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent-d),var(--accent)); border-radius:999px; transition:width .2s ease; }
+  .bar.indeterminate .bar-fill { width:35%; animation:indet 1.1s ease-in-out infinite; }
+  @keyframes indet { 0%{margin-left:-35%} 100%{margin-left:100%} }
+  .saving-sub { font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:9px; }
 
-  .is-hidden{display:none !important;}
-  .custom{display:flex;gap:10px;margin-top:10px;}
-  .custom__field{flex:1;min-width:0;}
-  .select-wrap--unit{flex:none;width:46%;max-width:200px;}
-  .select-wrap--unit select{padding-top:14px;padding-bottom:14px;font-size:.86rem;}
+  .error {
+    padding:14px; background:rgba(242,109,109,.08); border:1px solid rgba(242,109,109,.35);
+    border-radius:10px; font-family:var(--mono); font-size:13px; color:#ffb3b3; line-height:1.55;
+  }
+  .error b { color:#ffd4d4; }
 
-  /* ---- buttons ---- */
-  .btn{
-    width:100%;margin-top:24px;
-    border:0;border-radius:11px;cursor:pointer;
-    font-family:var(--font-mono);font-size:.95rem;font-weight:600;
-    letter-spacing:.06em;text-transform:uppercase;
-    padding:16px;color:#04121A;
-    background:linear-gradient(180deg,#5BD8E6,#33B7C6);
-    transition:transform .1s,filter .15s,box-shadow .15s;
-    box-shadow:0 10px 30px -12px rgba(70,200,214,.6);
-  }
-  .btn:hover{filter:brightness(1.06);}
-  .btn:active{transform:translateY(1px);}
-  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
-  .btn--ghost{
-    background:transparent;color:var(--text);
-    border:1px solid var(--line);box-shadow:none;
-  }
-  .btn--ghost:hover{border-color:var(--accent);filter:none;}
+  .picker-list { display:flex; flex-direction:column; gap:8px; }
+  .picker-list a { font-family:var(--mono); font-size:13px; color:var(--accent); word-break:break-all; }
 
-  .hint{margin:12px 2px 0;font-size:.78rem;color:var(--crit);min-height:1em;}
+  footer { margin-top:8px; text-align:center; font-family:var(--mono); font-size:11px; color:#565e6d; line-height:1.6; }
 
-  /* ---- cracking screen ---- */
-  .cracking__label{
-    font-family:var(--font-mono);font-size:.72rem;letter-spacing:.26em;
-    text-transform:uppercase;color:var(--accent);margin:0 0 16px;
-  }
-  .cracking__stream{
-    font-family:var(--font-mono);font-size:1.35rem;letter-spacing:.04em;
-    color:var(--text);word-break:break-all;min-height:2.4em;line-height:1.2;
-    opacity:.9;
-  }
-  .cracking__stream span{color:var(--muted-2);}
-  .cracking__meta{
-    margin-top:20px;font-family:var(--font-mono);font-size:.8rem;color:var(--muted);
-    display:flex;justify-content:space-between;gap:12px;
-  }
-  .cracking__bar{
-    margin-top:14px;height:4px;border-radius:99px;background:var(--line-soft);overflow:hidden;
-  }
-  .cracking__bar i{
-    display:block;height:100%;width:40%;border-radius:99px;
-    background:linear-gradient(90deg,transparent,var(--accent),transparent);
-    animation:sweep 1s linear infinite;
-  }
-  @keyframes sweep{from{transform:translateX(-120%);}to{transform:translateX(320%);}}
-
-  /* ---- result screen ---- */
-  .result__label{
-    font-family:var(--font-mono);font-size:.72rem;letter-spacing:.26em;
-    text-transform:uppercase;color:var(--muted-2);margin:0 0 10px;
-  }
-  .readout{margin:0 0 4px;}
-  .readout__value{
-    font-family:var(--font-mono);font-weight:700;line-height:.98;
-    font-size:clamp(2.6rem,13vw,4.6rem);letter-spacing:-.02em;
-    font-variant-numeric:tabular-nums;
-    color:var(--lvl,var(--text));
-  }
-  .readout__value sup{font-size:.5em;vertical-align:super;letter-spacing:0;}
-  .readout__unit{
-    font-family:var(--font-mono);font-size:clamp(1.1rem,4.5vw,1.5rem);
-    color:var(--muted);margin-top:2px;
-  }
-  .readout__sub{font-size:.82rem;color:var(--muted-2);margin-top:8px;font-style:italic;}
-
-  .verdict{
-    display:inline-flex;align-items:center;gap:8px;margin-top:18px;
-    font-family:var(--font-mono);font-size:.8rem;font-weight:600;
-    letter-spacing:.08em;text-transform:uppercase;
-    color:var(--lvl,var(--text));
-    padding:6px 12px;border-radius:99px;
-    background:color-mix(in srgb,var(--lvl,var(--text)) 12%,transparent);
-    border:1px solid color-mix(in srgb,var(--lvl,var(--text)) 35%,transparent);
-  }
-  .verdict::before{content:"";width:8px;height:8px;border-radius:99px;background:var(--lvl,var(--text));}
-
-  .meter{margin:22px 0 6px;height:8px;border-radius:99px;background:var(--line-soft);overflow:hidden;}
-  .meter i{display:block;height:100%;border-radius:99px;background:var(--lvl,var(--accent));
-    width:0;transition:width .7s cubic-bezier(.2,.8,.2,1);}
-
-  .against{
-    margin-top:26px;border-top:1px solid var(--line-soft);padding-top:18px;
-  }
-  .against__title{
-    font-family:var(--font-mono);font-size:.68rem;letter-spacing:.22em;
-    text-transform:uppercase;color:var(--muted-2);margin:0 0 12px;
-  }
-  .row{
-    display:flex;justify-content:space-between;align-items:baseline;gap:14px;
-    padding:9px 0;border-bottom:1px solid var(--line-soft);
-    font-family:var(--font-mono);font-size:.86rem;
-  }
-  .row:last-child{border-bottom:0;}
-  .row.sel{color:var(--text);}
-  .row .who{color:var(--muted);flex:1;min-width:0;}
-  .row.sel .who{color:var(--text);}
-  .row .who small{display:block;color:var(--muted-2);font-size:.72rem;letter-spacing:0;margin-top:2px;}
-  .row .t{color:var(--text);white-space:nowrap;text-align:right;}
-  .row .tag{
-    font-size:.6rem;letter-spacing:.14em;color:var(--accent);
-    border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);
-    border-radius:5px;padding:2px 5px;margin-left:8px;vertical-align:middle;
-  }
-
-  .warn{
-    margin-top:20px;display:flex;gap:12px;
-    background:color-mix(in srgb,var(--weak) 9%,var(--ink-2));
-    border:1px solid color-mix(in srgb,var(--weak) 32%,transparent);
-    border-radius:11px;padding:14px 16px;
-  }
-  .warn svg{flex:none;width:20px;height:20px;color:var(--weak);margin-top:1px;}
-  .warn p{margin:0;font-size:.85rem;line-height:1.5;color:#F2D9C4;}
-  .warn.is-hidden{display:none;}
-
-  .footer{
-    margin-top:20px;text-align:center;
-    font-family:var(--font-mono);font-size:.68rem;letter-spacing:.04em;color:var(--muted-2);
-  }
-  .footer b{color:var(--muted);font-weight:600;}
-
-  .notes{margin-top:16px;border-top:1px solid var(--line-soft);}
-  .notes>summary{
-    list-style:none;cursor:pointer;padding:12px 2px;
-    font-family:var(--font-mono);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--muted);display:flex;align-items:center;gap:9px;
-  }
-  .notes>summary::-webkit-details-marker{display:none;}
-  .notes>summary::before{
-    content:"";width:7px;height:7px;flex:none;
-    border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
-    transform:rotate(-45deg);transition:transform .2s;
-  }
-  .notes[open]>summary::before{transform:rotate(45deg);}
-  .notes>summary:hover{color:var(--text);}
-  .notes>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px;}
-  .notes__body{padding:2px 2px 8px;}
-  .notes__body p{margin:0 0 12px;font-size:.82rem;line-height:1.6;color:var(--muted);}
-  .notes__body p b{color:var(--text);font-weight:600;}
-  .notes__body h4{
-    margin:16px 0 8px;font-family:var(--font-mono);font-size:.64rem;letter-spacing:.2em;
-    text-transform:uppercase;color:var(--muted-2);font-weight:600;
-  }
-  .notes__body ul{margin:0;padding:0;list-style:none;}
-  .notes__body li{
-    position:relative;padding:7px 0 7px 18px;font-size:.82rem;line-height:1.55;color:var(--muted);
-    border-bottom:1px solid var(--line-soft);
-  }
-  .notes__body li:last-child{border-bottom:0;}
-  .notes__body li::before{content:"";position:absolute;left:2px;top:14px;width:7px;height:2px;border-radius:2px;background:var(--crit);}
-  .notes__body .good li::before{background:var(--strong);}
-
-  @media (max-width:420px){
-    .brand{flex-direction:column;gap:2px;}
-  }
-  @media (prefers-reduced-motion:reduce){
-    .screen.is-active{animation:none;}
-    .cracking__bar i{animation:none;width:100%;}
-    .meter i{transition:none;}
-  }
+  @keyframes rise { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+  @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none!important;transition:none!important} }
 </style>
 </head>
 <body>
-  <main class="stage">
-    <header class="brand">
-      <span class="brand__mark">HOLDOUT</span>
-      <span class="brand__sub">password time-to-break</span>
+  <div class="app">
+    <header>
+      <span class="eyebrow">Runs in your browser</span>
+      <h1>Downstream</h1>
+      <p class="sub">Paste a link, pick a size, get an MP4.</p>
     </header>
 
-    <section class="card" aria-live="polite">
-      <p class="eyebrow">Runs entirely in your browser · <b>nothing leaves this page</b></p>
-
-      <!-- ENTRY -->
-      <div class="screen is-active" id="screen-entry">
-        <label class="field-label" for="pw">Password</label>
-        <div class="field">
-          <input id="pw" type="password" placeholder="Type a password to test"
-                 autocomplete="off" autocapitalize="off" autocorrect="off"
-                 spellcheck="false" inputmode="text" aria-describedby="charset">
-          <button class="reveal" id="reveal" type="button" aria-label="Show password" aria-pressed="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" id="eye">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-            </svg>
-          </button>
-        </div>
-        <div class="charset" id="charset">
-          <span class="chip" data-k="lower">a–z</span>
-          <span class="chip" data-k="upper">A–Z</span>
-          <span class="chip" data-k="digit">0–9</span>
-          <span class="chip" data-k="symbol">!@#</span>
-          <span class="len">length 0</span>
-        </div>
-
-        <div class="attacker">
-          <label class="field-label" for="attacker">Attacker model</label>
-          <div class="select-wrap">
-            <select id="attacker">
-              <option value="1e2">Online login, rate-limited · 100 guesses/s</option>
-              <option value="1e4">Offline · bcrypt / argon2 (slow) · 10 K/s</option>
-              <option value="2.4e11" selected>Offline · MD5 / NTLM · one RTX 5090 · 240 B/s</option>
-              <option value="1e13">Offline · MD5 / NTLM · GPU cluster · 10 T/s</option>
-              <option value="custom">Custom · set your own speed…</option>
-            </select>
-          </div>
-          <div class="custom is-hidden" id="custom">
-            <div class="field custom__field">
-              <input id="customRate" type="text" inputmode="decimal" placeholder="e.g. 500"
-                     autocomplete="off" spellcheck="false" aria-label="Custom guess speed value">
-            </div>
-            <div class="select-wrap select-wrap--unit">
-              <select id="customUnit" aria-label="Custom guess speed unit">
-                <option value="1">guesses / s</option>
-                <option value="1e3">thousand / s</option>
-                <option value="1e6">million / s</option>
-                <option value="1e9" selected>billion / s</option>
-                <option value="1e12">trillion / s</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <button class="btn" id="crack">Crack it</button>
-        <p class="hint" id="hint" role="alert"></p>
+    <!-- endpoint setup -->
+    <div class="card">
+      <label class="lbl" for="endpoint">Your cobalt endpoint</label>
+      <div class="row stack">
+        <input id="endpoint" type="url" spellcheck="false" autocomplete="off"
+               placeholder="https://your-instance.up.railway.app/" />
+        <button id="saveEndpoint" class="btn-mini">Save</button>
       </div>
-
-      <!-- CRACKING -->
-      <div class="screen" id="screen-cracking" aria-hidden="true">
-        <p class="cracking__label">Running brute force…</p>
-        <div class="cracking__stream" id="stream"></div>
-        <div class="cracking__meta">
-          <span>candidates tried</span>
-          <span id="counter">0</span>
-        </div>
-        <div class="cracking__bar"><i></i></div>
+      <div id="endpointState" class="endpoint-state">
+        <span class="dot off"></span><span class="muted">No endpoint set yet.</span>
       </div>
-
-      <!-- RESULT -->
-      <div class="screen" id="screen-result">
-        <p class="result__label">Time to break</p>
-        <div class="readout" id="readout">
-          <div class="readout__value" id="rv">—</div>
-          <div class="readout__unit" id="ru"></div>
-          <div class="readout__sub" id="rs"></div>
-        </div>
-        <span class="verdict" id="verdict">—</span>
-
-        <div class="meter"><i id="meterfill"></i></div>
-
-        <div class="against">
-          <p class="against__title">Against other setups</p>
-          <div id="rows"></div>
-        </div>
-
-        <div class="warn is-hidden" id="warn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
-          </svg>
-          <p id="warntext"></p>
-        </div>
-
-        <button class="btn btn--ghost" id="okay">Okay — wipe it</button>
+      <button id="helpToggle" class="help-toggle">How do I get an endpoint?</button>
+      <div id="help" class="help hidden">
+        This page is just the interface — it needs a <b>cobalt</b> server to do the actual
+        downloading. The public one is blocked for YouTube, so run your own (free, ~2 minutes):
+        <ol>
+          <li>Open the <a href="https://railway.com/deploy/cobalt-tools" target="_blank" rel="noopener">Railway one-click template</a> and deploy. It presets <code>CORS_WILDCARD=1</code> so this page can reach it.</li>
+          <li>Copy the public URL Railway gives you (ends in <code>.up.railway.app</code>).</li>
+          <li>Paste it above and hit <b>Save</b>. Done — it's remembered on this device.</li>
+        </ol>
+        Prefer another route? Any <a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">cobalt</a>
+        instance with permissive CORS works. Public instances are hit-or-miss for YouTube.
       </div>
+    </div>
 
-      <p class="footer" id="footer"><b>No storage · no network · no logging.</b> Refresh to reset.</p>
-
-      <details class="notes">
-        <summary>About these estimates</summary>
-        <div class="notes__body">
-          <p>Every time shown assumes an attacker who already knows your password's length and character types, then guesses without stopping. Real attacks are often faster — they start with leaked-password databases and pattern rules, not blind brute force. That's what the warnings flag.</p>
-          <p><b>Passphrase note.</b> When a passphrase is detected, the word-list time assumes a 10,000-word attacker dictionary. That's a middle-ground guess, not a precise figure — real word lists run from a few thousand to hundreds of thousands of words. Read it as a rough order of magnitude: more words, and rarer ones, push the true time much higher.</p>
-          <h4>Avoid</h4>
-          <ul>
-            <li>Reusing a password anywhere — one leak exposes every account that shares it.</li>
-            <li>Names, birthdays, pets, sports teams — anything someone could look up about you gets tried first.</li>
-            <li>Simple swaps like a&rarr;@ or o&rarr;0. Cracking tools apply these rules automatically.</li>
-            <li>Single words, keyboard runs (qwerty, 12345), or a word with a number and symbol tacked on the end.</li>
-            <li>Typing a real password into sites you don't trust. This page runs fully offline, but most don't — assume anything you enter elsewhere can be logged.</li>
-          </ul>
-          <h4>What helps</h4>
-          <ul class="good">
-            <li>Length beats complexity: a long, unique, random password from a password manager is strongest.</li>
-            <li>No manager? A passphrase of several uncommon, unrelated words is a memorable runner-up.</li>
-          </ul>
+    <!-- download -->
+    <div class="card">
+      <label class="lbl" for="url">Video link</label>
+      <input id="url" type="url" inputmode="url" spellcheck="false" autocomplete="off"
+             placeholder="https://www.youtube.com/watch?v=…" />
+      <div class="quality-row">
+        <div>
+          <label class="lbl" for="quality">Quality</label>
+          <select id="quality">
+            <option value="max">Best available</option>
+            <option value="2160">2160p (4K)</option>
+            <option value="1440">1440p</option>
+            <option value="1080" selected>1080p</option>
+            <option value="720">720p</option>
+            <option value="480">480p</option>
+            <option value="360">360p</option>
+          </select>
         </div>
-      </details>
-    </section>
-  </main>
+      </div>
+      <button id="download" class="btn-primary btn-block">Download MP4</button>
+      <div id="result" class="result hidden"></div>
+    </div>
+
+    <footer>
+      Only download content you have the right to use.<br />
+      Your own uploads · Creative Commons · public domain · with permission.
+    </footer>
+  </div>
 
 <script>
-(() => {
-  "use strict";
+const $ = (id) => document.getElementById(id);
+const els = {
+  endpoint:$("endpoint"), saveEndpoint:$("saveEndpoint"), endpointState:$("endpointState"),
+  helpToggle:$("helpToggle"), help:$("help"),
+  url:$("url"), quality:$("quality"), download:$("download"), result:$("result"),
+};
 
-  // ---- attacker rate is read live from the <select> at crack time ----
-  const SCENARIOS = [
-    { rate: 1e2,   label: "Online login, rate-limited", note: "100 guesses/s" },
-    { rate: 1e4,   label: "Offline · bcrypt/argon2",    note: "10 K/s (slow hash)" },
-    { rate: 2.4e11,label: "Offline · one RTX 5090",      note: "240 B/s (MD5/NTLM)" },
-    { rate: 1e13,  label: "Offline · GPU cluster",       note: "10 T/s (well-funded)" },
-  ];
+const STORE_KEY = "downstream.endpoint";
 
-  const LOG2 = Math.log10(2);
-  const L = {
-    minute: Math.log10(60), hour: Math.log10(3600), day: Math.log10(86400),
-    month: Math.log10(2629800), year: Math.log10(31557600),
-  };
-  const SCALES = [
-    [0,""],[3,"thousand"],[6,"million"],[9,"billion"],[12,"trillion"],
-    [15,"quadrillion"],[18,"quintillion"],[21,"sextillion"],[24,"septillion"],
-  ];
+// localStorage may be unavailable (e.g. sandboxed preview) — degrade quietly.
+function loadEndpoint(){ try { return localStorage.getItem(STORE_KEY) || ""; } catch { return ""; } }
+function persistEndpoint(v){ try { localStorage.setItem(STORE_KEY, v); } catch {} }
 
-  // charset pool sizes
-  function analyze(pw){
-    const chars = [...pw];
-    const has = { lower:false, upper:false, digit:false, symbol:false, ext:false };
-    for (const ch of chars){
-      const c = ch.codePointAt(0);
-      if (c > 127) has.ext = true;
-      else if (ch >= "a" && ch <= "z") has.lower = true;
-      else if (ch >= "A" && ch <= "Z") has.upper = true;
-      else if (ch >= "0" && ch <= "9") has.digit = true;
-      else has.symbol = true;
-    }
-    let pool = 0;
-    if (has.lower) pool += 26;
-    if (has.upper) pool += 26;
-    if (has.digit) pool += 10;
-    if (has.symbol) pool += 33;
-    if (has.ext) pool += 100;
-    return { has, pool, length: chars.length };
-  }
+function normalize(u){
+  u = (u || "").trim();
+  if (!u) return "";
+  if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+  return u;
+}
 
-  // average guesses to crack, in log10, then time in log10 seconds
-  function log10Seconds(length, pool, rate){
-    const log10Guesses = length * Math.log10(pool) - LOG2; // keyspace/2
-    return log10Guesses - Math.log10(rate);
-  }
+function refreshEndpointState(){
+  const set = !!normalize(els.endpoint.value);
+  els.endpointState.innerHTML = set
+    ? '<span class="dot on"></span><span class="muted">Endpoint set — ready to download.</span>'
+    : '<span class="dot off"></span><span class="muted">No endpoint set yet.</span>';
+}
 
-  function formatTime(log10s){
-    let value = "", unit = "", sub = "";
-    if (log10s < 0){
-      value = "Instantly"; sub = "gone before you finish reading this";
-    } else if (log10s < L.minute){
-      const v = Math.max(1, Math.round(10 ** log10s));
-      value = String(v); unit = v === 1 ? "second" : "seconds";
-    } else if (log10s < L.hour){
-      const v = Math.max(1, Math.round(10 ** (log10s - L.minute)));
-      value = String(v); unit = v === 1 ? "minute" : "minutes";
-    } else if (log10s < L.day){
-      const v = Math.max(1, Math.round(10 ** (log10s - L.hour)));
-      value = String(v); unit = v === 1 ? "hour" : "hours";
-    } else if (log10s < L.month){
-      const v = Math.max(1, Math.round(10 ** (log10s - L.day)));
-      value = String(v); unit = v === 1 ? "day" : "days";
-    } else if (log10s < L.year){
-      const v = Math.max(1, Math.round(10 ** (log10s - L.month)));
-      value = String(v); unit = v === 1 ? "month" : "months";
-    } else {
-      const y = log10s - L.year;
-      if (y < 3){
-        const v = Math.max(1, Math.round(10 ** y));
-        value = String(v); unit = v === 1 ? "year" : "years";
-      } else if (y < 27){
-        let sc = SCALES[0];
-        for (const s of SCALES){ if (y >= s[0]) sc = s; }
-        const mant = Math.round(10 ** (y - sc[0]));
-        value = mant.toLocaleString() + " " + sc[1];
-        unit = "years";
+// init
+els.endpoint.value = loadEndpoint();
+refreshEndpointState();
+
+els.saveEndpoint.onclick = () => {
+  const v = normalize(els.endpoint.value);
+  els.endpoint.value = v;
+  persistEndpoint(v);
+  refreshEndpointState();
+};
+els.endpoint.addEventListener("input", refreshEndpointState);
+els.helpToggle.onclick = () => {
+  const open = !els.help.classList.contains("hidden");
+  els.help.classList.toggle("hidden", open);
+  els.helpToggle.textContent = open ? "How do I get an endpoint?" : "Hide setup steps";
+};
+
+// ---- download ----
+function showResult(html){ els.result.innerHTML = html; els.result.classList.remove("hidden"); }
+function hideResult(){ els.result.classList.add("hidden"); els.result.innerHTML = ""; }
+
+// Keep the finished file around so "choose a folder" doesn't have to re-download.
+let lastBlob = null, lastName = "video.mp4", lastUrl = "";
+
+function fmtBytes(n){
+  if (!n) return "–";
+  const u = ["B","KB","MB","GB"]; let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return n.toFixed(i ? 1 : 0) + " " + u[i];
+}
+
+// Drop a blob into the browser's Downloads folder with the right filename.
+function saveBlobToDownloads(blob, name){
+  const objUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objUrl; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(objUrl), 20000);
+}
+
+// Last-resort: hand the link to the browser directly (tunnel carries an attachment header).
+function fallbackLinkDownload(url, name){
+  const a = document.createElement("a");
+  a.href = url; a.download = name || ""; a.rel = "noopener";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+// Fetch the file, showing real progress, then save to Downloads.
+async function startSave(url, filename){
+  const name = filename || "video.mp4";
+  lastName = name; lastUrl = url; lastBlob = null;
+
+  showResult(
+    '<div class="saving">' +
+      '<div class="saving-top"><span class="saving-file">' + name + '</span><span class="saving-pct" id="savePct">0%</span></div>' +
+      '<div class="bar indeterminate" id="saveBar"><div class="bar-fill"></div></div>' +
+      '<div class="saving-sub" id="saveSub">Starting…</div>' +
+    '</div>'
+  );
+  const barEl = $("saveBar"), fillEl = barEl.querySelector(".bar-fill"), pctEl = $("savePct"), subEl = $("saveSub");
+
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+    const total = +(resp.headers.get("Content-Length") || resp.headers.get("Estimated-Content-Length") || 0);
+    const reader = resp.body.getReader();
+    const chunks = []; let received = 0;
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); received += value.length;
+      if (total) {
+        const pct = Math.min(100, received / total * 100);
+        barEl.classList.remove("indeterminate");
+        fillEl.style.width = pct + "%";
+        pctEl.textContent = pct.toFixed(0) + "%";
       } else {
-        const e = Math.floor(y);
-        const mant = Math.round((10 ** (y - e)) * 10) / 10;
-        value = mant + " \u00d7 10^" + e;
-        unit = "years";
+        pctEl.textContent = "···";
       }
-      if (y > Math.log10(1.38e10)) sub = "longer than the universe has existed";
+      subEl.textContent = fmtBytes(received) + (total ? " / " + fmtBytes(total) : " downloaded");
     }
-    return { value, unit, sub };
+
+    lastBlob = new Blob(chunks, { type: "video/mp4" });
+    saveBlobToDownloads(lastBlob, name);
+    savedCard(name);
+  } catch (e) {
+    // CORS-blocked or offline: let the browser fetch the tunnel URL itself.
+    fallbackLinkDownload(url, name);
+    savedCard(name, true);
   }
+}
 
-  function levelFor(log10s){
-    if (log10s < L.day)  return { key:"crit",   label: log10s < 2 ? "Falls instantly" : "Critically weak", color:"var(--crit)" };
-    if (log10s < L.year) return { key:"weak",   label:"Weak",      color:"var(--weak)" };
-    const y = log10s - L.year;
-    if (y < 2) return { key:"fair",   label:"Fair",      color:"var(--fair)" };
-    if (y < 6) return { key:"strong", label:"Strong",    color:"var(--strong)" };
-    return { key:"elite",  label:"Excellent", color:"var(--elite)" };
-  }
+function savedCard(name, viaFallback){
+  const canPick = !!window.showSaveFilePicker && !!lastBlob;
+  const note = viaFallback
+    ? 'Download started — check your <code>Downloads</code> folder.'
+    : 'Saved to your <code>Downloads</code> folder.';
+  showResult(
+    '<div class="ready">' +
+      '<div class="ready-file">' + name + '</div>' +
+      '<div class="ready-note">' + note + '</div>' +
+      '<div class="savebtns">' +
+        (canPick ? '<button id="pickFolder" class="btn-mini">Choose a folder…</button>' : '') +
+        '<a href="' + (lastUrl || "#") + '" download="' + name + '" rel="noopener"><button class="btn-mini">Save again</button></a>' +
+      '</div>' +
+    '</div>'
+  );
+  const pick = $("pickFolder");
+  if (pick) pick.onclick = chooseFolderAndSave;
+}
 
-  function fillFor(log10s){
-    const pct = (log10s + 1) / 26 * 100;
-    return Math.max(3, Math.min(100, Math.round(pct)));
-  }
-
-  function compact(ft){ return ft.unit ? ft.value + " " + ft.unit : ft.value; }
-  function withSup(str){ return str.replace(/10\^(\d+)/g, "10<sup>$1</sup>"); }
-
-  // ---------- realism check ----------
-  const COMMON = new Set(("123456 123456789 12345678 12345 1234567 1234567890 password password1 password123 " +
-    "qwerty qwerty123 qwertyuiop 111111 123123 000000 iloveyou 1234 abc123 admin welcome monkey login " +
-    "letmein dragon 654321 princess sunshine master football baseball superman batman trustno1 hello " +
-    "starwars whatever passw0rd zaq12wsx 1q2w3e4r 1qaz2wsx qazwsx aaaaaa 121212 696969 shadow michael " +
-    "ninja mustang harley freedom hottie loveme secret summer flower charlie donald hunter buster soccer " +
-    "andrew tigger jordan michelle daniel jessica ashley thomas jennifer computer robert access " +
-    "asdfgh asdfghjkl zxcvbnm 7777777 changeme test guest root user 123321 555555 987654321"
-  ).split(/\s+/).filter(Boolean));
-
-  const RUNS = ["qwerty","asdfgh","zxcvbn","qwertyuiop","asdfghjkl","123456","1234567890","1qaz","qazwsx","abcdef"];
-
-  // common-word list used only to spot passphrases (words joined together)
-  const WORDS = new Set(("the and for are but not you all any can had her was one our out day get has him " +
-    "his how man new now old see two way who boy did its let put say she too use dad mom cat dog cow pig " +
-    "correct horse battery staple apple table chair water light music happy green blue black white brown " +
-    "orange purple yellow silver golden river mountain ocean forest desert island valley meadow garden " +
-    "flower tree grass stone river cloud storm thunder winter summer spring autumn morning evening night " +
-    "dragon tiger eagle shark whale panda zebra horse mouse snake wolf bear lion sheep goat duck frog " +
-    "house money power dream heart brain sword shield castle knight wizard planet rocket engine window " +
-    "coffee butter cheese bread sugar honey lemon melon grape berry potato tomato carrot pepper garlic " +
-    "purple bottle candle pencil paper letter number circle square triangle yellow silent golden random " +
-    "guitar violin trumpet drummer singer dancer artist writer doctor farmer baker driver sailor pilot " +
-    "friend family mother father sister brother cousin nephew people person little bigger faster slower " +
-    "yellow orange violet indigo scarlet crimson maroon copper bronze marble granite crystal diamond " +
-    "shadow sunset sunrise rainbow breeze whisper thunder lightning galaxy comet meteor saturn jupiter " +
-    "banana cherry orange peach plum mango kiwi olive onion celery radish squash ginger basil thyme mint " +
-    "market street bridge tunnel harbor tower palace temple church school office kitchen bedroom garden " +
-    "monkey rabbit turtle spider beetle salmon turkey donkey camel otter moose bison raven robin sparrow " +
-    "purple thunder wooden metal paper glass plastic cotton velvet leather rubber copper silver golden " +
-    "quick brown lazy jumps over under above below inside behind front early later never always maybe"
-  ).split(/\s+/).filter(w => w.length >= 3));
-  let LONGEST = 0; for (const w of WORDS) if (w.length > LONGEST) LONGEST = w.length;
-
-  // returns the fewest common words a lowercase string fully splits into (0 = doesn't)
-  function wordBreak(s){
-    const n = s.length;
-    const best = new Array(n + 1).fill(-1);
-    best[0] = 0;
-    for (let i = 3; i <= n; i++){
-      for (let j = Math.max(0, i - LONGEST); j <= i - 3; j++){
-        if (best[j] >= 0 && WORDS.has(s.slice(j, i))){
-          if (best[i] < 0 || best[j] + 1 < best[i]) best[i] = best[j] + 1;
-        }
-      }
-    }
-    return best[n] > 0 ? best[n] : 0;
-  }
-
-  // returns word count if the input looks like a passphrase, else 0
-  function passphraseWords(pw){
-    const lc = pw.toLowerCase();
-    if (/[\s._\-]/.test(pw)){                    // separated: "correct horse battery staple"
-      const toks = lc.split(/[\s._\-]+/).filter(t => /^[a-z]+$/.test(t) && t.length >= 3);
-      if (toks.length >= 3) return toks.length;
-    }
-    if (/^[a-z]+$/.test(pw) && pw.length >= 12){ // joined: "correcthorsebatterystaple"
-      const seg = wordBreak(lc);
-      if (seg >= 3) return seg;
-    }
-    return 0;
-  }
-
-  // realism check — takes the selected attacker rate so it can price a word-list attack
-  function realism(pw, rate){
-    if (!pw) return null;
-    const lc = pw.toLowerCase();
-    if (COMMON.has(lc))
-      return "This is one of the most-guessed passwords in every leaked-password list. Real attackers try these first, so it falls in well under a second no matter what the number above says.";
-    if (/^\d+$/.test(pw))
-      return "Digits only (PINs, dates, phone numbers) have a tiny search space and dominate leaked lists. Expect this to fall almost immediately in a real attack.";
-    if (/^(.)\1+$/.test(pw) || /^(.{1,3})\1{2,}$/.test(pw))
-      return "Repeated characters barely expand the search space and are tried very early. Treat the estimate above as a best case only.";
-    const words = passphraseWords(pw);
-    if (words){
-      const DICT = 10000; // assumed size of the attacker's common-word list
-      const log10combos = words * Math.log10(DICT) - LOG2;
-      const t = compact(formatTime(log10combos - Math.log10(rate)));
-      return "This looks like a passphrase — about " + words + " words joined together. Attackers run " +
-        "word-list \u201ccombinator\u201d attacks that guess whole words at a time, not characters, so the real " +
-        "search space is far smaller than the character math above. Against a 10,000-word list, the selected " +
-        "attacker could crack it in roughly " + t + ". Longer passphrases and rarer words push that back up.";
-    }
-    if (RUNS.some(r => lc.includes(r)))
-      return "Keyboard runs and sequences like this sit in every cracking wordlist. The estimate above is far more optimistic than reality.";
-    if (/^[a-z]+$/.test(pw) && pw.length <= 12)
-      return "This looks like a single lowercase word. Dictionary attacks run through every common word in seconds, so the brute-force number above doesn't apply.";
-    if (/^[A-Z]?[a-z]+[0-9]{1,4}[^A-Za-z0-9]{0,2}$/.test(pw))
-      return "This follows a very common pattern — a word, then a few digits, then maybe a symbol. Cracking tools apply exactly these rules first, so the real time is much shorter than shown.";
-    return null;
-  }
-
-  function fmtRate(r){
-    const units = [[1e12,"trillion"],[1e9,"billion"],[1e6,"million"],[1e3,"thousand"]];
-    for (const [n, w] of units){
-      if (r >= n){ const x = r / n; return (x >= 100 ? Math.round(x) : Math.round(x * 10) / 10) + " " + w + "/s"; }
-    }
-    return Math.round(r).toLocaleString() + "/s";
-  }
-
-  // ---------- DOM ----------
-  const $ = (id) => document.getElementById(id);
-  const pw = $("pw"), reveal = $("reveal"), eye = $("eye");
-  const charset = $("charset"), attacker = $("attacker"), hint = $("hint");
-  const screens = { entry:$("screen-entry"), cracking:$("screen-cracking"), result:$("screen-result") };
-  const stream = $("stream"), counter = $("counter");
-  const rv = $("rv"), ru = $("ru"), rs = $("rs"), verdict = $("verdict");
-  const meterfill = $("meterfill"), rows = $("rows"), warn = $("warn"), warntext = $("warntext");
-  const custom = $("custom"), customRate = $("customRate"), customUnit = $("customUnit");
-
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let churnTimer = null, revealTimer = null;
-
-  function show(name){
-    for (const k in screens){
-      const on = k === name;
-      screens[k].classList.toggle("is-active", on);
-      screens[k].setAttribute("aria-hidden", on ? "false" : "true");
-    }
-  }
-
-  // live charset readout
-  function updateCharset(){
-    const a = analyze(pw.value);
-    charset.querySelectorAll(".chip").forEach(chip=>{
-      chip.classList.toggle("on", !!a.has[chip.dataset.k] || (chip.dataset.k==="symbol" && a.has.ext));
+// Chromium/Edge only: let the user pick the destination (defaults to Downloads).
+async function chooseFolderAndSave(){
+  if (!window.showSaveFilePicker || !lastBlob) return;
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: lastName,
+      types: [{ description: "MP4 video", accept: { "video/mp4": [".mp4"] } }],
     });
-    charset.querySelector(".len").textContent = "length " + a.length;
-    if (pw.value) hint.textContent = "";
+    const writable = await handle.createWritable();
+    await writable.write(lastBlob);
+    await writable.close();
+  } catch (e) {
+    if (e && e.name === "AbortError") return; // user closed the dialog
+  }
+}
+
+function errorCard(main, hint){
+  showResult('<div class="error"><b>' + main + '</b>' + (hint ? '<br>' + hint : '') + '</div>');
+}
+
+function handle(data){
+  const s = data && data.status;
+  if (s === "tunnel" || s === "redirect") {
+    startSave(data.url, data.filename);
+  } else if (s === "picker") {
+    const items = (data.picker || []).filter(Boolean);
+    if (!items.length) return errorCard("Nothing downloadable came back.", "Try a different link or quality.");
+    const links = items.map((it, i) =>
+      '<a href="' + it.url + '" target="_blank" rel="noopener" download>Download item ' + (i + 1) + ' (' + (it.type || "media") + ')</a>'
+    ).join("");
+    showResult('<div class="picker-list">' + links + '</div>');
+  } else if (s === "local-processing") {
+    errorCard("This instance needs client-side processing.",
+      "Redeploy with <code>FORCE_LOCAL_PROCESSING=never</code> (the Railway template does this), or use another instance.");
+  } else if (s === "error") {
+    const code = (data.error && data.error.code) || "unknown";
+    errorCard("cobalt returned an error.", "Code: " + code + ". The video may be unavailable, private, or unsupported.");
+  } else {
+    errorCard("Unexpected response from the endpoint.", "Check that the URL points at a cobalt API instance.");
+  }
+}
+
+async function download(){
+  const endpoint = normalize(els.endpoint.value);
+  if (!endpoint) {
+    els.help.classList.remove("hidden");
+    els.helpToggle.textContent = "Hide setup steps";
+    return errorCard("Set your cobalt endpoint first.", "See the setup steps above.");
+  }
+  const url = els.url.value.trim();
+  if (!/^https?:\/\//i.test(url)) {
+    return errorCard("Enter a full video link.", "It should start with http:// or https://");
   }
 
-  // reveal toggle
-  reveal.addEventListener("click", ()=>{
-    const showing = pw.type === "text";
-    pw.type = showing ? "password" : "text";
-    reveal.setAttribute("aria-pressed", String(!showing));
-    reveal.setAttribute("aria-label", showing ? "Show password" : "Hide password");
-    eye.innerHTML = showing
-      ? '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
-      : '<path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.4 5.2A9.6 9.6 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3M6.2 6.2A17 17 0 0 0 2 12s3.5 7 10 7a9.5 9.5 0 0 0 3-.5"/>';
-    pw.focus();
-  });
+  const q = els.quality.value;
+  // h264 guarantees a clean MP4 but tops out ~1080p; for higher res use av1 (cobalt still muxes to mp4).
+  const codec = (q === "2160" || q === "1440" || q === "max") ? "av1" : "h264";
 
-  pw.addEventListener("input", updateCharset);
-  pw.addEventListener("keydown", e=>{ if (e.key === "Enter") crack(); });
+  els.download.disabled = true;
+  showResult('<div class="working"><span class="spinner"></span>Asking your instance to build the file…</div>');
 
-  // custom-speed mode
-  const isCustom = () => attacker.value === "custom";
-  attacker.addEventListener("change", ()=>{
-    custom.classList.toggle("is-hidden", !isCustom());
-    hint.textContent = "";
-    if (isCustom()) customRate.focus();
-  });
-  customRate.addEventListener("keydown", e=>{ if (e.key === "Enter") crack(); });
-  customRate.addEventListener("input", ()=>{ hint.textContent = ""; });
-
-  // resolve the guesses/second for the current selection (null = invalid custom input)
-  function currentRate(){
-    if (isCustom()){
-      const v = parseFloat(customRate.value);
-      if (!isFinite(v) || v <= 0) return null;
-      return v * parseFloat(customUnit.value);
-    }
-    return parseFloat(attacker.value);
-  }
-
-  // ---------- crack flow ----------
-  function crack(){
-    const value = pw.value;
-    if (!value){
-      hint.textContent = "Enter a password to analyze.";
-      pw.focus();
-      return;
-    }
-    const selRate = currentRate();
-    if (selRate === null){
-      hint.textContent = "Enter a positive guess speed for custom mode.";
-      customRate.focus();
-      return;
-    }
-    const a = analyze(value);
-    const usingCustom = isCustom();
-
-    // compute everything now; the churn is purely theatrical
-    const rowDefs = SCENARIOS.map(s => ({
-      label: s.label, note: s.note, rate: s.rate,
-      selected: !usingCustom && s.rate === selRate,
-    }));
-    if (usingCustom)
-      rowDefs.push({ label: "Custom (your speed)", note: fmtRate(selRate), rate: selRate, selected: true });
-
-    const result = {
-      selLog: log10Seconds(a.length, a.pool, selRate),
-      warn: realism(value, selRate),
-      rows: rowDefs.map(r => ({
-        label: r.label, note: r.note, selected: r.selected,
-        text: compact(formatTime(log10Seconds(a.length, a.pool, r.rate))),
-      })),
-    };
-
-    startChurn(a, () => render(result));
-  }
-
-  function startChurn(a, done){
-    show("cracking");
-    if (reduce){
-      stream.textContent = "";
-      revealTimer = setTimeout(done, 150);
-      return;
-    }
-    // build a churn alphabet from the classes actually used
-    let alpha = "";
-    if (a.has.lower) alpha += "abcdefghijklmnopqrstuvwxyz";
-    if (a.has.upper) alpha += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    if (a.has.digit) alpha += "0123456789";
-    if (a.has.symbol || a.has.ext) alpha += "!@#$%^&*()-_=+[]{};:,.<>?/";
-    if (!alpha) alpha = "abcdefghijklmnopqrstuvwxyz0123456789";
-    const width = Math.min(Math.max(a.length, 6), 22);
-    let tries = 0;
-    churnTimer = setInterval(()=>{
-      let s = "";
-      for (let i=0;i<width;i++) s += alpha[(Math.random()*alpha.length)|0];
-      stream.textContent = s;
-      tries += Math.floor(Math.random()*9e7) + 1e6;
-      counter.textContent = tries.toLocaleString();
-    }, 55);
-    revealTimer = setTimeout(()=>{ clearInterval(churnTimer); churnTimer=null; done(); }, 1150);
-  }
-
-  function render(r){
-    const ft = formatTime(r.selLog);
-    const lvl = levelFor(r.selLog);
-
-    document.documentElement.style.setProperty("--lvl", lvl.color);
-    rv.innerHTML = withSup(ft.value);
-    ru.textContent = ft.unit;
-    rs.textContent = ft.sub;
-    verdict.textContent = lvl.label;
-
-    rows.innerHTML = "";
-    r.rows.forEach(row=>{
-      const el = document.createElement("div");
-      el.className = "row" + (row.selected ? " sel" : "");
-      el.innerHTML =
-        '<span class="who">' + row.label +
-          (row.selected ? '<span class="tag">SELECTED</span>' : '') +
-          '<small>' + row.note + '</small></span>' +
-        '<span class="t">' + withSup(row.text) + '</span>';
-      rows.appendChild(el);
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Accept": "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url,
+        videoQuality: q,
+        downloadMode: "auto",
+        youtubeVideoCodec: codec,
+        filenameStyle: "pretty",
+        alwaysProxy: true, // route through the instance so we get a real file, not a tab that just plays
+      }),
     });
-
-    if (r.warn){ warntext.textContent = r.warn; warn.classList.remove("is-hidden"); }
-    else warn.classList.add("is-hidden");
-
-    show("result");
-    meterfill.style.width = "0%";
-    requestAnimationFrame(()=>{ meterfill.style.width = fillFor(r.selLog) + "%"; });
-    $("okay").focus();
+    let data;
+    try { data = await res.json(); }
+    catch { return errorCard("The endpoint didn't return JSON.", "That URL may not be a cobalt API instance."); }
+    handle(data);
+  } catch (e) {
+    errorCard("Couldn't reach the endpoint.",
+      "It may be offline, or its CORS settings block this page. A self-hosted instance with <code>CORS_WILDCARD=1</code> fixes this.");
+  } finally {
+    els.download.disabled = false;
   }
+}
 
-  // ---------- wipe ----------
-  function wipe(){
-    if (churnTimer){ clearInterval(churnTimer); churnTimer = null; }
-    if (revealTimer){ clearTimeout(revealTimer); revealTimer = null; }
-    pw.value = "";
-    pw.type = "password";
-    reveal.setAttribute("aria-pressed","false");
-    stream.textContent = "";
-    counter.textContent = "0";
-    rows.innerHTML = "";
-    rv.textContent = "—"; ru.textContent = ""; rs.textContent = "";
-    warntext.textContent = "";
-    warn.classList.add("is-hidden");
-    meterfill.style.width = "0%";
-    hint.textContent = "";
-    document.documentElement.style.removeProperty("--lvl");
-    attacker.value = "2.4e11";
-    customRate.value = "";
-    customUnit.value = "1e9";
-    custom.classList.add("is-hidden");
-    updateCharset();
-    show("entry");
-    pw.focus();
-  }
-
-  $("crack").addEventListener("click", crack);
-  $("okay").addEventListener("click", wipe);
-
-  updateCharset();
-  pw.focus();
-})();
+els.download.onclick = download;
+els.url.addEventListener("keydown", (e) => { if (e.key === "Enter") download(); });
 </script>
 </body>
 </html>
